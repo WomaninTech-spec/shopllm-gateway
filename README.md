@@ -54,13 +54,13 @@ Generic gateways (LiteLLM, Portkey, Helicone, Kong AI Gateway, Cloudflare AI Gat
  
 ## Roadmap
  
-- [ ] M1 — Hello LLM: minimal Anthropic + OpenAI clients
-- [ ] M2 — FastAPI gateway with unified `/v1/chat/completions`
-- [ ] M3 — PII redaction middleware
-- [ ] M4 — Cost tracking & smart model routing
-- [ ] M5 — Observability (logs + Prometheus + Grafana)
-- [ ] M6 — Guardrails (rate limit, circuit breaker, retries, prompt injection)
-- [ ] M7 — Deployment (Docker + Cloud Run + Terraform + GitHub Actions)
+- [x] M1 — Hello LLM: minimal Anthropic + OpenAI clients
+- [x] M2 — FastAPI gateway with unified `/v1/chat/completions`
+- [x] M3 — PII redaction middleware
+- [x] M4 — Cost tracking & smart model routing
+- [x] M5 — Observability: structured JSON logs, request-ID propagation, per-call cost estimation
+- [x] M6 — Guardrails: per-tenant rate limiting, circuit breaker, retry budget
+- [x] M7 — Deployment: Docker (linux/amd64) + Cloud Run + Terraform + DEPLOY.md runbook
 - [ ] M8 — Productization (docs site, examples, launch)
  
 ## License
