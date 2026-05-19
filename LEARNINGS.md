@@ -24,3 +24,16 @@ A running journal — raw, honest, dated. This is the artifact I'll turn into bl
 ### Next session
 - Hello LLM: write a minimal Anthropic client in Python.
 
+---
+ 
+## Day 2 — [today's date]
+ 
+### What I did
+- Wired Anthropic SDK with async client and tenacity-based retry.
+- Built a provider-agnostic `ChatResult` dataclass to decouple my code from any SDK shape.
+- Made first real LLM call from my own infrastructure.
+ 
+### What I learned
+- The adapter pattern is what will let me plug OpenAI, Mistral, Ollama tomorrow without touching the rest of the code.
+- Token counts come from the provider response — they will be the basis of cost tracking later.
+- `pydantic-settings` + `.env.local` is the clean way to handle secrets locally.
