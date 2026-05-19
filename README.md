@@ -1,13 +1,9 @@
-# shopllm-gateway
-
 # ShopLLM Gateway
 *The open-source LLM gateway purpose-built for e-commerce teams.*
  
 ![status](https://img.shields.io/badge/status-WIP-orange)
 ![license](https://img.shields.io/badge/license-MIT-blue)
- 
----
- 
+  
 ## The Problem
  
 E-commerce teams want to use LLMs in production — for product descriptions, customer support chatbots, smart search, review moderation, personalized emails. But putting LLMs in production safely is hard:
