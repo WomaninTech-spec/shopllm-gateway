@@ -15,7 +15,7 @@ class RoutingDecision:
  
  
 # Simple heuristic table. Extend later with per-tenant policy.
-CHEAP_ANTHROPIC = "claude-3-5-haiku-latest"
+CHEAP_ANTHROPIC = "claude-haiku-4-5"
 STRONG_ANTHROPIC = "claude-sonnet-4-5"
  
  
