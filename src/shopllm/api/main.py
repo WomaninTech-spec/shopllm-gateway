@@ -1,4 +1,4 @@
-"""ShopLLM Gateway — FastAPI entrypoint with structured observability."""
+"""ShopLLM Gateway — FastAPI entrypoint with observability + PII redaction."""
 from __future__ import annotations
  
 import time
@@ -16,17 +16,19 @@ from shopllm.api.schemas import (
 from shopllm.obs.logging import configure_logging, get_logger
 from shopllm.obs.pricing import estimate_cost_usd
 from shopllm.providers.anthropic_adapter import AnthropicAdapter
+from shopllm.redaction.engine import RedactionEngine
  
 configure_logging()
 log = get_logger()
  
 app = FastAPI(
     title="ShopLLM Gateway",
-    version="0.1.0",
+    version="0.2.0",
     description="OpenAI-compatible LLM gateway for e-commerce teams.",
 )
  
 _anthropic = AnthropicAdapter()
+_redactor = RedactionEngine()
  
  
 @app.middleware("http")
@@ -38,13 +40,7 @@ async def request_logger(request: Request, call_next):
         response = await call_next(request)
     except Exception as exc:  # noqa: BLE001
         duration_ms = (time.perf_counter() - start) * 1000
-        log.error(
-            "request.error",
-            request_id=request_id,
-            path=request.url.path,
-            duration_ms=round(duration_ms, 2),
-            error=str(exc),
-        )
+        log.error("request.error", request_id=request_id, duration_ms=round(duration_ms, 2), error=str(exc))
         raise
     duration_ms = (time.perf_counter() - start) * 1000
     response.headers["X-Request-ID"] = request_id
@@ -69,12 +65,20 @@ async def chat_completions(req: ChatCompletionRequest) -> ChatCompletionResponse
     user_parts = [m.content for m in req.messages if m.role == "user"]
     if not user_parts:
         raise HTTPException(status_code=400, detail="At least one user message is required.")
-    prompt = "\n\n".join(user_parts)
+    raw_prompt = "\n\n".join(user_parts)
+ 
+    # PII redaction BEFORE sending anything to the provider.
+    redaction = _redactor.redact(raw_prompt)
+    if redaction.total > 0:
+        log.info("pii.redacted", request_id=None, counts=redaction.counts, total=redaction.total)
  
     started = time.perf_counter()
     try:
         result = await _anthropic.chat(
-            prompt, model=req.model, max_tokens=req.max_tokens, system=system,
+            redaction.redacted_text,
+            model=req.model,
+            max_tokens=req.max_tokens,
+            system=system,
         )
     except Exception as exc:  # noqa: BLE001
         log.error("llm.call.error", model=req.model, error=str(exc))
@@ -90,6 +94,7 @@ async def chat_completions(req: ChatCompletionRequest) -> ChatCompletionResponse
         output_tokens=result.output_tokens,
         latency_ms=round(latency_ms, 2),
         cost_usd=round(cost_usd, 6),
+        pii_hits=redaction.total,
     )
  
     return ChatCompletionResponse(

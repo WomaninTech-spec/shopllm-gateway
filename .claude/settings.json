@@ -12,7 +12,9 @@
       "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway branch -a)",
       "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway log --oneline --all --graph)",
       "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway pull --no-rebase origin main)",
-      "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway log --oneline --graph -6)"
+      "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway log --oneline --graph -6)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(PYTHONPATH=src .venv/bin/pytest -q)"
     ],
     "additionalDirectories": [
       "/Users/bTeslar/Documents/Projets/shopllm-gateway"
