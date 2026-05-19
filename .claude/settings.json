@@ -9,7 +9,10 @@
       "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway status)",
       "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway rev-parse --show-toplevel)",
       "Bash(git init *)",
-      "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway branch -a)"
+      "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway branch -a)",
+      "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway log --oneline --all --graph)",
+      "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway pull --no-rebase origin main)",
+      "Bash(git -C /Users/bTeslar/Documents/Projets/shopllm-gateway log --oneline --graph -6)"
     ],
     "additionalDirectories": [
       "/Users/bTeslar/Documents/Projets/shopllm-gateway"
