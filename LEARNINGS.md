@@ -41,7 +41,8 @@ A running journal — raw, honest, dated. This is the artifact I'll turn into bl
 ---
  
 ## Day 3 — [today's date]
- 
+
+
 ### What I did
 - Built an OpenAI-compatible FastAPI endpoint backed by my Anthropic adapter.
 - Proved drop-in compatibility with the official `openai` Python SDK.
@@ -58,6 +59,20 @@ Any app that already uses the `openai` SDK can talk to my gateway by changing on
 ---
 
 ## Day 4 — 19 May 2026
+
+### What I shipped
+- E-commerce-aware PII redaction with audit reports + unit tests.
+- Production-grade guardrails: token-bucket rate limiter, circuit breaker per provider.
+- Cost-aware multi-model routing (Haiku/Sonnet auto-selection).
+- Containerized, deployed to Cloud Run via Terraform, GitHub Actions pipeline on tag.
+ 
+### Key insights
+- PII redaction in the gateway is a structural compliance control — not "nice to have".
+- Circuit breakers prevent cascading failures when a provider degrades; the alternative (retries everywhere) makes things worse.
+- The OpenAI-compatible API contract + cost-aware routing gives users a "cut your bill 3x without changing code" pitch.
+ 
+### Numbers to remember
+- For a 200-input / 400-output token call: Haiku ≈ $0.0022, Sonnet ≈ $0.0066 → ~3x ratio. Most classification/short-rewrite tasks belong on Haiku.
 
 ### What I did
 - Fixed the French phone regex that was silently never matching.
@@ -101,3 +116,43 @@ Cloud Run injects a `PORT` environment variable into the container. Your app mus
 
 ### Trophy
 `curl https://shopllm-gateway-1032746299850.europe-west1.run.app/health` returns `{"status":"ok"}` — the gateway is live on Cloud Run, served from a real Docker image pushed to Artifact Registry, with the Anthropic API key stored securely in Secret Manager.
+
+---
+
+## Day 5 — 20 May 2026
+
+### What I did
+- Wired authentication and usage tracking into the gateway.
+- Created `shopllm.db.models`: three SQLAlchemy ORM tables (`Tenant`, `ApiKey`, `UsageEvent`).
+- Created `shopllm.db.session`: async SQLAlchemy engine + `SessionLocal` factory backed by Postgres.
+- Created `shopllm.auth.api_keys`: API key generation (`secrets.token_urlsafe`) and SHA-256 hashing.
+- Created `shopllm.auth.deps`: FastAPI `authenticate` dependency — reads the Bearer token, hashes it, looks it up in Postgres, returns the `Tenant`.
+- Updated `chat_completions` in `main.py`: injected `tenant: Tenant = Depends(authenticate)`, replaced `req.tenant_id` with `tenant.id`, added a `UsageEvent` write after every successful LLM call.
+- Fixed `config.py`: `database_url` and `api_key_prefix` were floating at module level outside the `Settings` class — moved them inside so pydantic-settings picks them up from env vars.
+- Ran `scripts/bootstrap_db.py` to create tables and seed the first tenant + API key.
+
+### What I learned
+
+**FastAPI `Depends` pattern:**
+`Depends(authenticate)` is FastAPI's dependency injection. The function `authenticate` runs before the handler, can raise `HTTPException`, and its return value is injected as a parameter. This is the idiomatic way to handle auth, DB sessions, and any shared setup — keeps handlers clean and the logic testable in isolation.
+
+**SQLAlchemy async setup — three mandatory pieces:**
+1. `create_async_engine(url)` — the connection pool. URL must use an async driver (`postgresql+asyncpg://`).
+2. `sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)` — the session factory. `expire_on_commit=False` is critical: without it, accessing ORM attributes after `await s.commit()` triggers a lazy load which fails in async context.
+3. `async with SessionLocal() as s:` — opens a session, auto-closes on exit. Never share a session across requests.
+
+**Why SHA-256, not bcrypt, for API keys:**
+bcrypt is designed for passwords (short, human-chosen, low entropy). API keys are long random tokens (`secrets.token_urlsafe(32)` = 256 bits of entropy) — they don't need bcrypt's slow hashing. SHA-256 is fast and perfectly safe here because there's nothing to brute-force.
+
+**pydantic-settings: fields must be inside the class:**
+A `Field(...)` defined at module level (outside the `Settings` class body) is just a plain Python variable — pydantic-settings never sees it and can't load it from env vars. Every configurable value must be a class-level annotation inside the `Settings` class.
+
+**Postgres already running on 5432:**
+When a port conflict happens at `docker run`, Docker creates the container but doesn't start it. Always check with `docker ps` what's already on the port and what credentials it uses before trying to create a new container.
+
+### What confused me
+- Why `expire_on_commit=False` is needed. SQLAlchemy marks ORM objects as "expired" after a commit (to force a fresh DB read on next access). In async code there's no implicit I/O, so accessing an expired attribute raises a `MissingGreenlet` error. Disabling expiry keeps the Python object usable after commit without a round-trip.
+- Why `psql -U postgres` failed on the existing container. The default superuser is only named `postgres` when the image is started with `POSTGRES_USER=postgres`. This container used `admin`, so the correct command was `psql -U admin -d postgres`.
+
+### Trophy
+`PYTHONPATH=src python scripts/bootstrap_db.py` printed `Tenant: 1` and a live API key. The gateway now has a real identity layer: every request must carry a valid Bearer token, every call is persisted to Postgres.
