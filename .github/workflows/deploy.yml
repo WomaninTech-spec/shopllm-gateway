@@ -1,0 +1,37 @@
+name: deploy
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REGION: europe-west1
+      REPO: shopllm-gateway
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Build & push
+        run: |
+          gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/api:${GITHUB_REF_NAME}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+      - uses: hashicorp/setup-terraform@v3
+      - name: Terraform apply
+        working-directory: terraform
+        run: |
+          terraform init
+          terraform apply -auto-approve \
+            -var="project_id=${PROJECT_ID}" \
+            -var="image=${IMAGE}"
